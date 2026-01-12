@@ -1,4 +1,4 @@
-package com.example.app.data.repository
+package com.example.mylocation.data
 
 import android.annotation.SuppressLint
 import android.content.Context
