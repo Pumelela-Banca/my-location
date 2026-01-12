@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.mylocation.data.LocationRepository
 
 
+@Suppress("UNCHECKED_CAST")
 class HomeViewModelFactory(
     private val repository: LocationRepository
 ): ViewModelProvider.Factory {

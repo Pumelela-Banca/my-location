@@ -1,70 +1,78 @@
 package com.example.mylocation.ui.home
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import androidx.core.app.ActivityCompat
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
-import com.example.mylocation.databinding.FragmentHomeBinding
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
+import androidx.core.app.ActivityCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import com.example.mylocation.R
+import com.example.mylocation.data.LocationRepository
 
-class HomeFragment : Fragment() {
 
-    private var _binding: FragmentHomeBinding? = null
+class HomeFragment : Fragment(R.layout.fragment_home) {
 
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var longitudeLocation: TextView
+    private lateinit var latitudeLocation: TextView
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        val homeViewModel =
-            ViewModelProvider(this).get(HomeViewModel::class.java)
 
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        val root: View = binding.root
 
-        val textView: Button = binding.button
+    private val viewModel: HomeViewModel by viewModels {
+        // Pass the LocationRepository to the HomeViewModelFactory
+        HomeViewModelFactory(
+            LocationRepository(requireContext().applicationContext)
+        )
+    }
 
-        homeViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            granted ->
+            if (granted) {
+                viewModel.loadLocation()
+            } else {
+                viewModel.onPermissionDenied()
+            }
         }
-        return root
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        longitudeLocation = view.findViewById(R.id.longitude)
+        latitudeLocation = view.findViewById(R.id.latitude)
+
+        val btnLocation = view.findViewById<Button>(R.id.button)
+
+        btnLocation.setOnClickListener {
+            requestLocation()
+        }
+
+        viewModel.uiState.observe(viewLifecycleOwner) { state ->
+            when {
+                state.message != null -> {
+                    longitudeLocation.text = state.message
+                    latitudeLocation.text = state.message
+                }
+                state.latitude != null && state.longitude != null -> {
+                    longitudeLocation.text = "Longitude: ${state.longitude}"
+                    latitudeLocation.text = "Latitude: ${state.latitude}"
+                }
+            }
+        }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
-
-    private fun getLocation() {
+    private fun requestLocation() {
         if (ActivityCompat.checkSelfPermission(
-                this.requireContext(),
+                requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            return
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        } else {
+            viewModel.loadLocation()
         }
-        }
-
-
     }
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission())
-        { isGranted: Boolean ->
-            if (isGranted) { getLocation }
-            else { tvLocation.text = "Permission denied" } }
 }
